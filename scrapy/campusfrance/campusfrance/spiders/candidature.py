@@ -32,6 +32,9 @@ class CandidatureSpider(Spider):
     def parse_select(self, elements):
         return [v.get_attribute('value') for v in elements[1:]]
 
+    def parse_page(self):
+        pass
+
     def construct_permutations(self, **kwargs):
         for i in kwargs['programme']:
             for j in kwargs['domaine']:
@@ -107,7 +110,10 @@ class CandidatureSpider(Spider):
     def reinitialize_driver(self):
         self.log('Closing current driver')
         self.log('Reinitializing driver')
-        self.driver.back()
+        self.driver.delete_all_cookies()
+        self.driver.close()
+        self.driver = webdriver.Firefox()
+        self.driver.get(self.url)
         self.log('Cookie selenium %s' % self.driver.get_cookies())
 
     def spider_opened(self, spider):

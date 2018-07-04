@@ -11,4 +11,8 @@ import scrapy
 class CampusfranceItem(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
-    pass
+    titre = scrapy.Field()
+    labo = scrapy.Field()
+    annee = scrapy.Field()
+    programme = scrapy.Field()
+    domaine = scrapy.Field()
