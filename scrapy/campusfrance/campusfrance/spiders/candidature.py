@@ -35,6 +35,13 @@ class CandidatureSpider(Spider):
                 in self.driver.page_source
         non_vide = "ponse(s)".decode('utf8') \
                 in self.driver.page_source
+        erreur = "Erreur interne".decode('utf8') \
+                in self.driver.page_source
+        while erreur:
+            self.reinitialize_driver()
+            self.trigger_select(p)
+            erreur = "Erreur interne".decode('utf8') \
+                in self.driver.page_source
         if vide:
             self.log('Page vide')
             self.reinitialize_driver()
@@ -42,13 +49,14 @@ class CandidatureSpider(Spider):
         elif non_vide:
             self.log('Page non vide pour combinaison: %s' % p)
             return True
-
+    
     def parse_select(self, elements):
         return [v.get_attribute('value') for v in elements[1:]]
 
     def parse_page(self, combinaison):
         export_button = self.driver.find_element_by_xpath('/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[2]/a/span')
         export_button.click()
+        self.driver.back()
 
     def construct_permutations(self, **kwargs):
         for i in kwargs['programme']:
@@ -90,31 +98,33 @@ class CandidatureSpider(Spider):
         self.pbar.total = len(self.combinaisons)
 
         for i, p in enumerate(self.combinaisons):
-            programme = self.driver.find_element_by_xpath(
-                "//select[@id='id5']")
-            domaine = self.driver.find_element_by_xpath(
-                "//select[@id='idf']")
-            annee_init = self.driver.find_element_by_xpath(
-                "//select[@id='id8']")
-            annee_cours = self.driver.find_element_by_xpath(
-                "//select[@id='idb']")
-
-            select1 = Select(programme)
-            select1.select_by_value(p['programme'])
-            select2 = Select(domaine)
-            select2.select_by_value(p['domaine'])
-            select3 = Select(annee_init)
-            select3.select_by_value(p['annee_init'])
-            recherche = self.driver \
-                .find_element_by_class_name("imageBoutonList")
-            self.last_position = i
-            self.log('-'*100)
-            self.log(p)
-            recherche.click()
+            self.trigger_select(p)
             if self.parse_page_error(p):
                 self.parse_page(p)
+            
             self.pbar.update(1)
         return
+
+    def trigger_select(self, p):
+        programme = self.driver.find_element_by_xpath(
+            "//select[@id='id5']")
+        domaine = self.driver.find_element_by_xpath(
+            "//select[@id='idf']")
+        annee_init = self.driver.find_element_by_xpath(
+            "//select[@id='id8']")
+        annee_cours = self.driver.find_element_by_xpath(
+            "//select[@id='idb']")
+
+        select1 = Select(programme)
+        select1.select_by_value(p['programme'])
+        select2 = Select(domaine)
+        select2.select_by_value(p['domaine'])
+        select3 = Select(annee_init)
+        select3.select_by_value(p['annee_init'])
+        recherche = self.driver \
+            .find_element_by_class_name("imageBoutonList")
+        
+        recherche.click()
 
     def reinitialize_driver(self):
         self.log('Closing current driver')
