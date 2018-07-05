@@ -11,11 +11,21 @@ class CandidatureSpider(Spider):
     name = 'candidature'
 
     def __init__(self, *args, **kwargs):
-        self.driver = webdriver.Firefox()
+        self.profile = webdriver.FirefoxProfile()
+        self.profile.set_preference('browser.download.folderList', 2) # custom location
+        self.profile.set_preference('browser.download.manager.showWhenStarting', False)
+        self.profile.set_preference('browser.download.dir', '/home/sami/Documents/Github/scrapers/scrapy/campusfrance/csv')
+        self.profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'text/csv')
+        self.driver = webdriver.Firefox(self.profile)
+
         self.combinaisons = []
         self.last_position = 0
         self.items = []
         self.url = 'http://chercheurs.campusfrance.org/CandidatureAnonyme/recherche-externe'
+
+        self.pbar = tqdm()  # initialize progress bar
+        self.pbar.clear()
+        self.pbar.write('Opening {} spider'.format(self.name))
 
     def start_requests(self):
         yield Request('http://chercheurs.campusfrance.org/CandidatureAnonyme/recherche-externe', self.parse)
@@ -23,36 +33,36 @@ class CandidatureSpider(Spider):
     def parse_page_error(self, p):
         vide = "produit aucun".decode('utf8') \
                 in self.driver.page_source
+        non_vide = "ponse(s)".decode('utf8') \
+                in self.driver.page_source
         if vide:
             self.log('Page vide')
             self.reinitialize_driver()
-        else:
+            return None
+        elif non_vide:
             self.log('Page non vide pour combinaison: %s' % p)
+            return True
 
     def parse_select(self, elements):
         return [v.get_attribute('value') for v in elements[1:]]
 
-    def parse_page(self):
-        pass
+    def parse_page(self, combinaison):
+        export_button = self.driver.find_element_by_xpath('/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[2]/a/span')
+        export_button.click()
 
     def construct_permutations(self, **kwargs):
         for i in kwargs['programme']:
             for j in kwargs['domaine']:
                 for y in kwargs['annee_init']:
-                    for z in kwargs['annee_cours']:
-                        self.combinaisons.append(
-                            {
-                                'programme': i,
-                                'domaine': j,
-                                'annee_init': y,
-                                'annee_cours': z
-                            }
-                        )
+                    self.combinaisons.append(
+                        {
+                            'programme': i,
+                            'domaine': j,
+                            'annee_init': y
+                        }
+                    )
         self.log('Taille totale des permutations : %s' %
                  len(self.combinaisons))
-
-    def configure_select_recherche(self, selections):
-        pass
 
     def parse(self, response):
         items = []
@@ -66,20 +76,18 @@ class CandidatureSpider(Spider):
         programme = self.driver.find_element_by_xpath("//select[@id='id5']")
         domaine = self.driver.find_element_by_xpath("//select[@id='idf']")
         annee_init = self.driver.find_element_by_xpath("//select[@id='id8']")
-        annee_cours = self.driver.find_element_by_xpath("//select[@id='idb']")
 
         pprogramme = programme.find_elements_by_tag_name("option")
         pdomaine = domaine.find_elements_by_tag_name("option")
         pannee_init = annee_init.find_elements_by_tag_name("option")
-        pannee_cours = annee_cours.find_elements_by_tag_name("option")
 
         self.log('Constructing permutations')
         self.construct_permutations(
             programme=self.parse_select(pprogramme),
             domaine=self.parse_select(pdomaine),
-            annee_init=self.parse_select(pannee_init),
-            annee_cours=self.parse_select(pannee_cours)
+            annee_init=self.parse_select(pannee_init)
         )
+        self.pbar.total = len(self.combinaisons)
 
         for i, p in enumerate(self.combinaisons):
             programme = self.driver.find_element_by_xpath(
@@ -97,14 +105,15 @@ class CandidatureSpider(Spider):
             select2.select_by_value(p['domaine'])
             select3 = Select(annee_init)
             select3.select_by_value(p['annee_init'])
-            select4 = Select(annee_cours)
-            select4.select_by_value(p['annee_cours'])
             recherche = self.driver \
                 .find_element_by_class_name("imageBoutonList")
             self.last_position = i
+            self.log('-'*100)
+            self.log(p)
             recherche.click()
-            self.parse_page_error(p)
-
+            if self.parse_page_error(p):
+                self.parse_page(p)
+            self.pbar.update(1)
         return
 
     def reinitialize_driver(self):
@@ -112,14 +121,9 @@ class CandidatureSpider(Spider):
         self.log('Reinitializing driver')
         self.driver.delete_all_cookies()
         self.driver.close()
-        self.driver = webdriver.Firefox()
+        self.driver = webdriver.Firefox(self.profile)
         self.driver.get(self.url)
         self.log('Cookie selenium %s' % self.driver.get_cookies())
-
-    def spider_opened(self, spider):
-        self.pbar = tqdm()  # initialize progress bar
-        self.pbar.clear()
-        self.pbar.write('Opening {} spider'.format(spider.name))
 
     def spider_closed(self, spider):
         self.driver.close()
