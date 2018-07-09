@@ -14,7 +14,7 @@ BOT_NAME = 'campusfrance'
 SPIDER_MODULES = ['campusfrance.spiders']
 NEWSPIDER_MODULE = 'campusfrance.spiders'
 
-#LOG_FILE = 'campusfrance.log'
+LOG_FILE = 'campusfrance.log'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'campusfrance (+http://www.yourdomain.com)'
