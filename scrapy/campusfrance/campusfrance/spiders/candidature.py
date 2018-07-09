@@ -4,21 +4,19 @@ from campusfrance import CampusfranceItem
 from scrapy import Request
 from tqdm import tqdm
 from selenium.webdriver.support.ui import Select
+from selenium.webdriver.remote.errorhandler import StaleElementReferenceException
+from selenium.webdriver.common.keys import Keys
 from scrapy.settings.default_settings import LOG_FORMAT
 import time
 
+chromedriver = r'/home/sami/Documents/Chromedriver/chromedriver'
 
 class CandidatureSpider(Spider):
     name = 'candidature'
 
     def __init__(self, *args, **kwargs):
-        self.profile = webdriver.FirefoxProfile()
-        self.profile.set_preference('browser.download.folderList', 2) # custom location
-        self.profile.set_preference('browser.download.manager.showWhenStarting', False)
-        self.profile.set_preference('browser.download.dir', '/home/sami/Documents/Github/scrapers/scrapy/campusfrance/csv')
-        self.profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'text/csv')
-        self.driver = webdriver.Firefox(self.profile)
-
+        self.driver = webdriver.Chrome(executable_path=chromedriver)
+        #self.driver = webdriver.Firefox()
         self.combinaisons = []
         self.last_position = 0
         self.items = []
@@ -55,21 +53,26 @@ class CandidatureSpider(Spider):
         return [v.get_attribute('value') for v in elements[1:]]
 
     def parse_list_page(self, combinaison):
-        #export_button = self.driver.find_element_by_xpath('/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[2]/a/span')
-        #export_button.click()
-        #self.driver.back()
+        '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[5]/div'
         list_event = self.driver.find_elements_by_xpath(
             '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[5]/div//a')
         size_elements = len(list_event)
         for i in range(size_elements):
-            list_event[i].click()
+            self.log(list_event)
+            try:
+                list_event[i].click()
+            except StaleElementReferenceException:
+                new_list_event = self.driver.find_elements_by_xpath(
+                    '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[5]/div//a')
+                self.driver.execute_script("arguments[0].scrollIntoView();", new_list_event[i])
+                time.sleep(1)
+                self.driver.execute_script("arguments[0].click()", new_list_event[i])
+
             item = self.parse_page()
             self.items.append(item)
             yield item
             self.driver.back()
-            time.sleep(2)
-            list_event = self.driver.find_elements_by_xpath(
-                '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[5]/div//a')
+            time.sleep(1)
 
     def parse_page(self):
         titre = self.driver.find_element_by_xpath(
@@ -121,15 +124,6 @@ class CandidatureSpider(Spider):
             pays2=pays2,
             institution_rattach2=institution_rattach2
         )
-
-        self.log('-'*100)
-        self.log(titre)
-        self.log(programme)
-        self.log(sigle)
-        self.log(adresse1)
-        self.log(nom1)
-        self.log(cp1)
-        self.log(institution_rattach1)
         return item
 
     def construct_permutations(self, **kwargs):
@@ -213,7 +207,8 @@ class CandidatureSpider(Spider):
         self.log('Reinitializing driver')
         self.driver.delete_all_cookies()
         self.driver.close()
-        self.driver = webdriver.Firefox(self.profile)
+        self.driver = webdriver.chrome(chromedriver)
+        #self.driver = webdriver.Firefox()
         self.driver.get(self.url)
         self.log('Cookie selenium %s' % self.driver.get_cookies())
 
