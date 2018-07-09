@@ -53,7 +53,10 @@ class CandidatureSpider(Spider):
         return [v.get_attribute('value') for v in elements[1:]]
 
     def parse_list_page(self, combinaison):
-        '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[5]/div'
+        all_results = self.driver.find_element_by_xpath('/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[4]/div/div/select')
+        select = Select(all_results)
+        select.select_by_value('100000')
+        time.sleep(3)
         list_event = self.driver.find_elements_by_xpath(
             '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[5]/div//a')
         size_elements = len(list_event)
@@ -65,18 +68,19 @@ class CandidatureSpider(Spider):
                 new_list_event = self.driver.find_elements_by_xpath(
                     '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div/div[5]/div//a')
                 self.driver.execute_script("arguments[0].scrollIntoView();", new_list_event[i])
-                time.sleep(1)
                 self.driver.execute_script("arguments[0].click()", new_list_event[i])
 
             item = self.parse_page()
             self.items.append(item)
             yield item
             self.driver.back()
-            time.sleep(1)
+        self.reinitialize_driver()
 
     def parse_page(self):
         titre = self.driver.find_element_by_xpath(
             '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[1]/div[1]/div/div/h3').text
+        annee_init = self.driver.find_element_by_xpath(
+            '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[1]/div[3]/div/div/div[2]/span').text
         programme = self.driver.find_element_by_xpath(
             '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[1]/div[2]/div/div/div[2]/span').text
         domaine = self.driver.find_element_by_xpath(
@@ -94,22 +98,30 @@ class CandidatureSpider(Spider):
             '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[3]/div/div/div/div/div[5]/div/div/div[2]/span').text
         institution_rattach1 = self.driver.find_element_by_xpath(
             '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[3]/div/div/div/div/div[6]/div/div/div[2]/span').text
-
-        nom2 = self.driver.find_element_by_xpath(
-            '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[1]/div/div/div[2]/span').text
-        adresse2 = self.driver.find_element_by_xpath(
-            '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[2]/div/div/div[2]/span').text
-        cp2 = self.driver.find_element_by_xpath(
-            '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[3]/div/div/div[2]/span').text
-        ville2 = self.driver.find_element_by_xpath(
-            '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[4]/div/div/div[2]/span').text
-        pays2 = self.driver.find_element_by_xpath(
-            '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[5]/div/div/div[2]/span').text
-        institution_rattach2 = self.driver.find_element_by_xpath(
-            '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[6]/div/div/div[2]/span').text
+        try:
+            nom2 = self.driver.find_element_by_xpath(
+                '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[1]/div/div/div[2]/span').text
+            adresse2 = self.driver.find_element_by_xpath(
+                '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[2]/div/div/div[2]/span').text
+            cp2 = self.driver.find_element_by_xpath(
+                '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[3]/div/div/div[2]/span').text
+            ville2 = self.driver.find_element_by_xpath(
+                '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[4]/div/div/div[2]/span').text
+            pays2 = self.driver.find_element_by_xpath(
+                '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[5]/div/div/div[2]/span').text
+            institution_rattach2 = self.driver.find_element_by_xpath(
+                '/html/body/div[2]/div/div[2]/div[2]/div[2]/div/div[4]/div/div/div/div/div[6]/div/div/div[2]/span').text
+        except:
+            nom2 = ""
+            adresse2 = ""
+            cp2 = ""
+            ville2 = ""
+            pays2 = ""
+            institution_rattach2= ""
 
         item = CampusfranceItem(
             titre=titre,
+            annee_init=annee_init,
             programme=programme,
             sigle=sigle,
             nom1=nom1,
@@ -128,17 +140,27 @@ class CandidatureSpider(Spider):
 
     def construct_permutations(self, **kwargs):
         for i in kwargs['programme']:
-            for j in kwargs['domaine']:
-                for y in kwargs['annee_init']:
-                    self.combinaisons.append(
-                        {
-                            'programme': i,
-                            'domaine': j,
-                            'annee_init': y
-                        }
-                    )
+            self.combinaisons.append(
+                {
+                    'programme': i,
+                }
+            )
         self.log('Taille totale des permutations : %s' %
                  len(self.combinaisons))
+
+    # def construct_permutations(self, **kwargs):
+    #     for i in kwargs['programme']:
+    #         for j in kwargs['domaine']:
+    #             for y in kwargs['annee_init']:
+    #                 self.combinaisons.append(
+    #                     {
+    #                         'programme': i,
+    #                         'domaine': j,
+    #                         'annee_init': y
+    #                     }
+    #                 )
+    #     self.log('Taille totale des permutations : %s' %
+    #              len(self.combinaisons))
 
     def parse(self, response):
         items = []
@@ -157,21 +179,27 @@ class CandidatureSpider(Spider):
         pdomaine = domaine.find_elements_by_tag_name("option")
         pannee_init = annee_init.find_elements_by_tag_name("option")
 
+        #les prog avec plus de 300 resultats et ceux qui restent
+        #prog_300 = ['6', '9', '10', '40'] 
+
         self.log('Constructing permutations')
         self.construct_permutations(
+            #programme=prog_300 + self.parse_select(pprogramme)[60:],
             programme=self.parse_select(pprogramme),
             domaine=self.parse_select(pdomaine),
             annee_init=self.parse_select(pannee_init)
         )
         self.pbar.total = len(self.combinaisons)
         # debugging
-        self.combinaisons = [
-            {
-                'programme': u"10000351",
-                'domaine': u"38",
-                'annee_init': u"2010"
-            }
-        ]
+        # self.combinaisons = [
+        #     {
+        #         'programme': u"10000351",
+        #         #'domaine': u"38",
+        #         #'annee_init': u"2010"
+        #     }
+        # ]
+        #début avec programme Maroc Toubkal
+        self.combinaisons = self.combinaisons[61:]
         for i, p in enumerate(self.combinaisons):
             self.trigger_select(p)
             if self.parse_page_error(p):
@@ -183,20 +211,22 @@ class CandidatureSpider(Spider):
 
     def trigger_select(self, p):
         programme = self.driver.find_element_by_xpath(
-            "//select[@id='id5']")
+            "//span[1]/div[2]/div/div/div[2]/select")
         domaine = self.driver.find_element_by_xpath(
-            "//select[@id='idf']")
+            "//span[1]/div[6]/div/div/div[2]/select")
         annee_init = self.driver.find_element_by_xpath(
-            "//select[@id='id8']")
-        annee_cours = self.driver.find_element_by_xpath(
-            "//select[@id='idb']")
+            "//span[1]/div[3]/div/div/div[2]/select")
+        # annee_cours = self.driver.find_element_by_xpath(
+        #     "//select[@id='idb']")
 
         select1 = Select(programme)
         select1.select_by_value(p['programme'])
-        select2 = Select(domaine)
-        select2.select_by_value(p['domaine'])
-        select3 = Select(annee_init)
-        select3.select_by_value(p['annee_init'])
+
+        # select2 = Select(domaine)
+        # select2.select_by_value(p['domaine'])
+        # select3 = Select(annee_init)
+        # select3.select_by_value(p['annee_init'])
+
         recherche = self.driver \
             .find_element_by_class_name("imageBoutonList")
         
@@ -205,9 +235,9 @@ class CandidatureSpider(Spider):
     def reinitialize_driver(self):
         self.log('Closing current driver')
         self.log('Reinitializing driver')
-        self.driver.delete_all_cookies()
+        #self.driver.delete_all_cookies()
         self.driver.close()
-        self.driver = webdriver.chrome(chromedriver)
+        self.driver = webdriver.Chrome(executable_path=chromedriver)
         #self.driver = webdriver.Firefox()
         self.driver.get(self.url)
         self.log('Cookie selenium %s' % self.driver.get_cookies())

@@ -12,7 +12,7 @@ class CampusfranceItem(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
     titre = scrapy.Field()
-    annee = scrapy.Field()
+    annee_init = scrapy.Field()
     programme = scrapy.Field()
     domaine = scrapy.Field()
     sigle = scrapy.Field()
