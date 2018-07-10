@@ -138,29 +138,29 @@ class CandidatureSpider(Spider):
         )
         return item
 
-    def construct_permutations(self, **kwargs):
-        for i in kwargs['programme']:
-            self.combinaisons.append(
-                {
-                    'programme': i,
-                }
-            )
-        self.log('Taille totale des permutations : %s' %
-                 len(self.combinaisons))
-
     # def construct_permutations(self, **kwargs):
     #     for i in kwargs['programme']:
-    #         for j in kwargs['domaine']:
-    #             for y in kwargs['annee_init']:
-    #                 self.combinaisons.append(
-    #                     {
-    #                         'programme': i,
-    #                         'domaine': j,
-    #                         'annee_init': y
-    #                     }
-    #                 )
+    #         self.combinaisons.append(
+    #             {
+    #                 'programme': i,
+    #             }
+    #         )
     #     self.log('Taille totale des permutations : %s' %
     #              len(self.combinaisons))
+
+    def construct_permutations(self, **kwargs):
+        for i in kwargs['programme']:
+            for j in kwargs['domaine']:
+                for y in kwargs['annee_init']:
+                    self.combinaisons.append(
+                        {
+                            'programme': i,
+                            'domaine': j,
+                            'annee_init': y
+                        }
+                    )
+        self.log('Taille totale des permutations : %s' %
+                 len(self.combinaisons))
 
     def parse(self, response):
         items = []
@@ -180,12 +180,12 @@ class CandidatureSpider(Spider):
         pannee_init = annee_init.find_elements_by_tag_name("option")
 
         #les prog avec plus de 300 resultats et ceux qui restent
-        #prog_300 = ['6', '9', '10', '40'] 
+        prog_300 = ['6', '9', '10', '40', '47'] 
 
         self.log('Constructing permutations')
         self.construct_permutations(
             #programme=prog_300 + self.parse_select(pprogramme)[60:],
-            programme=self.parse_select(pprogramme),
+            programme=prog_300,
             domaine=self.parse_select(pdomaine),
             annee_init=self.parse_select(pannee_init)
         )
@@ -198,9 +198,11 @@ class CandidatureSpider(Spider):
         #         #'annee_init': u"2010"
         #     }
         # ]
-        #début avec programme Maroc Toubkal
-        self.combinaisons = self.combinaisons[61:]
+        #debut avec programme Maroc Toubkal
+        self.combinaisons = self.combinaisons[66:]
         for i, p in enumerate(self.combinaisons):
+            self.log('-'*100)
+            self.log(p)
             self.trigger_select(p)
             if self.parse_page_error(p):
                 for item in self.parse_list_page(p):
@@ -222,10 +224,10 @@ class CandidatureSpider(Spider):
         select1 = Select(programme)
         select1.select_by_value(p['programme'])
 
-        # select2 = Select(domaine)
-        # select2.select_by_value(p['domaine'])
-        # select3 = Select(annee_init)
-        # select3.select_by_value(p['annee_init'])
+        select2 = Select(domaine)
+        select2.select_by_value(p['domaine'])
+        select3 = Select(annee_init)
+        select3.select_by_value(p['annee_init'])
 
         recherche = self.driver \
             .find_element_by_class_name("imageBoutonList")
